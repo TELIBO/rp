@@ -1,0 +1,5 @@
+{
+  "ignore": ["index/*", "documents/*", "client/*", "node_modules/*"],
+  "watch": ["server/*"],
+  "ext": "js,json"
+}
