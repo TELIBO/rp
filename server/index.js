@@ -19,11 +19,19 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Serve static files (documents)
-app.use('/files', express.static(path.join(__dirname, '../documents')));
+app.use('/files', express.static(documentsPath));
 
 // Initialize document indexer
-const documentsPath = path.join(__dirname, '../documents');
-const indexPath = path.join(__dirname, '../index');
+const documentsPath = process.env.DOCUMENTS_PATH 
+  ? path.join(__dirname, '..', process.env.DOCUMENTS_PATH.replace('./', ''))
+  : path.join(__dirname, '../documents-demo');
+const indexPath = process.env.INDEX_PATH
+  ? path.join(__dirname, '..', process.env.INDEX_PATH.replace('./', ''))
+  : path.join(__dirname, '../index');
+
+console.log('Documents path:', documentsPath);
+console.log('Index path:', indexPath);
+
 const documentIndexer = new DocumentIndexer(documentsPath, indexPath);
 
 // Make indexer available to routes
@@ -42,30 +50,47 @@ app.get('/api/health', (req, res) => {
 // Initialize directories and start indexing
 async function initialize() {
   try {
+    console.log('=== Starting Server Initialization ===');
+    console.log('Node version:', process.version);
+    console.log('Working directory:', process.cwd());
+    console.log('Environment:', process.env.NODE_ENV || 'development');
+    
     // Create necessary directories
+    console.log('Creating directories...');
     await fs.mkdir(documentsPath, { recursive: true });
     await fs.mkdir(indexPath, { recursive: true });
     await fs.mkdir(path.join(__dirname, '../uploads'), { recursive: true });
+    console.log('Directories created successfully');
 
     // Start indexing
     console.log('Starting document indexing...');
     await documentIndexer.initialize();
     console.log('Document indexing completed');
 
-    // Start file watching
-    documentIndexer.watchFiles();
-    console.log('File watching enabled');
+    // Start file watching (only in development)
+    if (process.env.NODE_ENV !== 'production') {
+      documentIndexer.watchFiles();
+      console.log('File watching enabled');
+    }
 
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+    // Start server
+    const server = app.listen(PORT, '0.0.0.0', () => {
+      console.log(`✅ Server running on port ${PORT}`);
+      console.log(`✅ Health check: http://localhost:${PORT}/api/health`);
     });
 
-    // Keep process alive
-    setInterval(() => {
-      console.log('Server heartbeat:', new Date().toISOString());
-    }, 10000);
+    // Graceful shutdown
+    process.on('SIGTERM', () => {
+      console.log('SIGTERM received, shutting down gracefully');
+      server.close(() => {
+        console.log('Server closed');
+        process.exit(0);
+      });
+    });
+
   } catch (error) {
-    console.error('Initialization error:', error);
+    console.error('❌ Initialization error:', error);
+    console.error('Stack trace:', error.stack);
     process.exit(1);
   }
 }
