@@ -1,8 +1,11 @@
-import React from 'react';
-import { FileText, Download, ExternalLink, Calendar, Tag, Users, Folder } from 'lucide-react';
+import React, { useState } from 'react';
+import { FileText, Download, ExternalLink, Calendar, Tag, Users, Folder, Star, TrendingUp, Eye } from 'lucide-react';
+import DocumentPreview from './DocumentPreview';
 import './SearchResults.css';
 
 function SearchResults({ results, loading, query }) {
+  const [previewDoc, setPreviewDoc] = useState(null);
+
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -36,6 +39,23 @@ function SearchResults({ results, loading, query }) {
     return colors[extension] || '#7f8c8d';
   };
 
+  const highlightText = (text, query) => {
+    if (!query || !text) return text;
+    
+    const parts = text.split(new RegExp(`(${query})`, 'gi'));
+    return parts.map((part, index) => 
+      part.toLowerCase() === query.toLowerCase() 
+        ? <mark key={index} className="highlight">{part}</mark>
+        : part
+    );
+  };
+
+  const getRelevanceLabel = (score) => {
+    if (score >= 5) return { label: 'Highly Relevant', color: '#2ecc71' };
+    if (score >= 2) return { label: 'Relevant', color: '#3498db' };
+    return { label: 'Match', color: '#95a5a6' };
+  };
+
   if (loading) {
     return (
       <div className="search-results">
@@ -61,14 +81,24 @@ function SearchResults({ results, loading, query }) {
 
   return (
     <div className="search-results">
+      {previewDoc && (
+        <DocumentPreview 
+          document={previewDoc} 
+          onClose={() => setPreviewDoc(null)} 
+        />
+      )}
+      
       <div className="results-header">
         <h2>Search Results</h2>
         <span className="results-count">{results.length} documents found</span>
       </div>
 
       <div className="results-list">
-        {results.map((doc) => (
-          <div key={doc.id} className="result-card">
+        {results.map((doc) => {
+          const relevance = getRelevanceLabel(doc.score || 0);
+          
+          return (
+          <div key={doc.id} className="result-card" onClick={() => setPreviewDoc(doc)}>
             <div className="result-header">
               <div className="file-info">
                 <div 
@@ -78,17 +108,34 @@ function SearchResults({ results, loading, query }) {
                   {getFileIcon(doc.extension)}
                 </div>
                 <div className="file-details">
-                  <h3 className="file-name">{doc.filename}</h3>
+                  <h3 className="file-name">{highlightText(doc.filename, query)}</h3>
                   <p className="file-path">{doc.path}</p>
                 </div>
               </div>
               <div className="result-actions">
+                {doc.score && (
+                  <div className="relevance-badge" style={{ backgroundColor: `${relevance.color}15`, color: relevance.color }}>
+                    <Star size={14} fill={relevance.color} />
+                    <span>{relevance.label}</span>
+                  </div>
+                )}
+                <button
+                  className="action-btn preview-btn"
+                  title="Quick preview"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPreviewDoc(doc);
+                  }}
+                >
+                  <Eye size={18} />
+                </button>
                 <a 
                   href={`http://localhost:5000${doc.url}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="action-btn view-btn"
                   title="Open file"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <ExternalLink size={18} />
                 </a>
@@ -97,13 +144,14 @@ function SearchResults({ results, loading, query }) {
                   download
                   className="action-btn download-btn"
                   title="Download file"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <Download size={18} />
                 </a>
               </div>
             </div>
 
-            <p className="file-preview">{doc.preview}</p>
+            <div className="file-preview">{highlightText(doc.preview, query)}</div>
 
             <div className="result-meta">
               <div className="meta-item">
@@ -139,7 +187,8 @@ function SearchResults({ results, loading, query }) {
               </div>
             )}
           </div>
-        ))}
+        );
+        })}
       </div>
     </div>
   );

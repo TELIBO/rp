@@ -4,7 +4,7 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const documentIndexer = req.app.get('documentIndexer');
-    const { q, extension, category, project, team, dateFrom, dateTo } = req.query;
+    const { q, extension, category, project, team, dateFrom, dateTo, semantic } = req.query;
 
     if (!q) {
       return res.status(400).json({ error: 'Query parameter "q" is required' });
@@ -19,11 +19,15 @@ router.get('/', async (req, res) => {
       dateTo: dateTo || null
     };
 
-    const results = documentIndexer.search(q, filters);
+    // Use semantic search if requested
+    const results = semantic === 'true' 
+      ? await documentIndexer.semanticSearch(q, filters)
+      : await documentIndexer.search(q, filters);
 
     res.json({
       query: q,
       filters,
+      semantic: semantic === 'true',
       total: results.length,
       results: results.map(doc => ({
         id: doc.id,
@@ -36,7 +40,9 @@ router.get('/', async (req, res) => {
         project: doc.project,
         team: doc.team,
         preview: doc.preview,
+        content: doc.content, // Include full content for preview
         score: doc.score,
+        fusionScore: doc.fusionScore,
         url: `/files/${doc.path}`
       }))
     });
@@ -46,10 +52,10 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.get('/filters', (req, res) => {
+router.get('/filters', async (req, res) => {
   try {
     const documentIndexer = req.app.get('documentIndexer');
-    const filters = documentIndexer.getCategories();
+    const filters = await documentIndexer.getCategories();
     res.json(filters);
   } catch (error) {
     console.error('Filter fetch error:', error);
@@ -57,10 +63,10 @@ router.get('/filters', (req, res) => {
   }
 });
 
-router.get('/stats', (req, res) => {
+router.get('/stats', async (req, res) => {
   try {
     const documentIndexer = req.app.get('documentIndexer');
-    const stats = documentIndexer.getStats();
+    const stats = await documentIndexer.getStats();
     res.json(stats);
   } catch (error) {
     console.error('Stats fetch error:', error);

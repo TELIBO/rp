@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const documentIndexer = req.app.get('documentIndexer');
-    const documents = documentIndexer.db.getAllDocuments();
+    const documents = await documentIndexer.db.getAllDocuments();
 
     const simplifiedDocs = documents.map(doc => ({
       id: doc.id,
@@ -29,10 +29,10 @@ router.get('/', (req, res) => {
   }
 });
 
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     const documentIndexer = req.app.get('documentIndexer');
-    const doc = documentIndexer.db.getDocumentById(req.params.id);
+    const doc = await documentIndexer.db.getDocumentById(req.params.id);
 
     if (!doc) {
       return res.status(404).json({ error: 'Document not found' });

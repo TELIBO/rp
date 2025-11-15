@@ -4,7 +4,8 @@ const lunr = require('lunr');
 const chokidar = require('chokidar');
 const DocumentParser = require('./documentParser');
 const { categorizeDocument } = require('./documentCategorizer');
-const DatabaseService = require('./database');
+const PostgresService = require('./postgresDatabase');
+const vectorSearch = require('./vectorSearch');
 
 class DocumentIndexer {
   constructor(documentsPath, indexPath) {
@@ -13,12 +14,17 @@ class DocumentIndexer {
     this.parser = new DocumentParser();
     this.index = null;
     
-    // Initialize database
-    const dbPath = path.join(indexPath, 'documents.db');
-    this.db = new DatabaseService(dbPath);
+    // Initialize PostgreSQL database
+    this.db = new PostgresService();
   }
 
   async initialize() {
+    // Initialize database
+    await this.db.initialize();
+    
+    // Initialize vector search
+    await vectorSearch.initialize();
+    
     // Index all documents
     await this.indexAllDocuments();
     
@@ -88,16 +94,30 @@ class DocumentIndexer {
         modified: stats.mtime,
         categories: [categoryResult.category],
         project: categoryResult.projects.length > 0 ? categoryResult.projects[0] : null,
-        team: null,
+        team: categoryResult.team || null,
         keywords: this.extractKeywords(content),
-        preview: this.generatePreview(content)
+        preview: this.generateSummary(content, filename, categoryResult)
       };
 
       // Insert or update in database
-      const docId = this.db.insertOrUpdateDocument(doc);
+      const docId = await this.db.insertOrUpdateDocument(doc);
       console.log(`Indexed: ${filename}`);
       
-      return { ...doc, id: docId };
+      // Index in vector database
+      const docWithId = { ...doc, id: docId };
+      await vectorSearch.indexDocument(docWithId);
+      
+      // Store embedding in PostgreSQL if available
+      if (vectorSearch.initialized) {
+        const embedding = await vectorSearch.generateEmbedding(
+          `${doc.filename} ${doc.content}`.slice(0, 5000)
+        );
+        if (embedding) {
+          await this.db.updateEmbedding(docId, embedding);
+        }
+      }
+      
+      return docWithId;
     } catch (error) {
       console.error(`Failed to index ${filePath}:`, error);
       throw error;
@@ -122,40 +142,166 @@ class DocumentIndexer {
   }
 
   generatePreview(content, length = 200) {
+    // Clean and normalize the content
     const cleaned = content.replace(/\s+/g, ' ').trim();
-    return cleaned.length > length 
-      ? cleaned.substring(0, length) + '...' 
-      : cleaned;
+    
+    if (cleaned.length === 0) {
+      return 'No preview available';
+    }
+    
+    // Try to extract meaningful sentences for summary
+    const sentences = cleaned.match(/[^.!?]+[.!?]+/g) || [cleaned];
+    
+    // Build summary from complete sentences
+    let summary = '';
+    for (const sentence of sentences) {
+      const trimmedSentence = sentence.trim();
+      if (summary.length + trimmedSentence.length <= length) {
+        summary += trimmedSentence + ' ';
+      } else {
+        // If we have at least one sentence, use it
+        if (summary.length > 0) {
+          break;
+        }
+        // Otherwise, truncate the first sentence
+        summary = trimmedSentence.substring(0, length) + '...';
+        break;
+      }
+    }
+    
+    // Clean up the summary
+    summary = summary.trim();
+    
+    // If summary is still too long or empty, fallback to simple truncation
+    if (summary.length === 0) {
+      summary = cleaned.substring(0, length) + '...';
+    } else if (summary.length > length) {
+      summary = summary.substring(0, length) + '...';
+    }
+    
+    return summary;
+  }
+
+  generateSummary(content, filename, categoryResult) {
+    const cleaned = content.replace(/\s+/g, ' ').trim();
+    
+    if (cleaned.length === 0) {
+      return `${categoryResult.category} document - ${filename}`;
+    }
+    
+    // Extract first meaningful paragraph or sentences
+    const sentences = cleaned.match(/[^.!?]+[.!?]+/g) || [];
+    
+    // Build an intelligent summary
+    let summary = '';
+    
+    // Add category context
+    summary = `[${categoryResult.category}] `;
+    
+    // Add team if available
+    if (categoryResult.team) {
+      summary += `${categoryResult.team} - `;
+    }
+    
+    // Add key information from content
+    const maxLength = 250;
+    let contentSummary = '';
+    
+    for (const sentence of sentences) {
+      const trimmed = sentence.trim();
+      // Skip very short sentences (likely headers or noise)
+      if (trimmed.length < 20) continue;
+      
+      if (contentSummary.length + trimmed.length <= maxLength) {
+        contentSummary += trimmed + ' ';
+      } else {
+        if (contentSummary.length === 0) {
+          contentSummary = trimmed.substring(0, maxLength);
+        }
+        break;
+      }
+    }
+    
+    // If no meaningful sentences, take first chunk
+    if (contentSummary.length === 0) {
+      contentSummary = cleaned.substring(0, maxLength);
+    }
+    
+    summary += contentSummary.trim();
+    
+    // Add keywords if summary is short
+    if (summary.length < 150 && categoryResult.keywords && categoryResult.keywords.length > 0) {
+      const topKeywords = categoryResult.keywords.slice(0, 5).join(', ');
+      summary += ` | Keywords: ${topKeywords}`;
+    }
+    
+    // Ensure it doesn't end abruptly
+    if (!summary.match(/[.!?]$/)) {
+      summary += '...';
+    }
+    
+    return summary;
   }
 
   buildIndex() {
     const documents = this.db.getAllDocuments();
     
-    this.index = lunr(function() {
-      this.ref('id');
-      this.field('filename', { boost: 10 });
-      this.field('content', { boost: 5 });
-      this.field('categories', { boost: 8 });
-      this.field('project', { boost: 7 });
-      this.field('team', { boost: 7 });
-      this.field('keywords', { boost: 6 });
-      this.field('path', { boost: 3 });
+    // Handle async getAllDocuments
+    if (documents instanceof Promise) {
+      documents.then(docs => {
+        this.index = lunr(function() {
+          this.ref('id');
+          this.field('filename', { boost: 10 });
+          this.field('content', { boost: 5 });
+          this.field('categories', { boost: 8 });
+          this.field('project', { boost: 7 });
+          this.field('team', { boost: 7 });
+          this.field('keywords', { boost: 6 });
+          this.field('path', { boost: 3 });
 
-      documents.forEach(doc => {
-        this.add({
-          id: doc.id,
-          filename: doc.filename,
-          content: doc.content,
-          categories: doc.categories.join(' '),
-          project: doc.project || '',
-          team: doc.team || '',
-          keywords: doc.keywords.join(' '),
-          path: doc.path
+          docs.forEach(doc => {
+            this.add({
+              id: doc.id,
+              filename: doc.filename,
+              content: doc.content || '',
+              categories: (doc.categories || []).join(' '),
+              project: doc.project || '',
+              team: doc.team || '',
+              keywords: (doc.keywords || []).join(' '),
+              path: doc.path
+            });
+          });
+        });
+
+        console.log(`Index built with ${docs.length} documents`);
+      });
+    } else {
+      this.index = lunr(function() {
+        this.ref('id');
+        this.field('filename', { boost: 10 });
+        this.field('content', { boost: 5 });
+        this.field('categories', { boost: 8 });
+        this.field('project', { boost: 7 });
+        this.field('team', { boost: 7 });
+        this.field('keywords', { boost: 6 });
+        this.field('path', { boost: 3 });
+
+        documents.forEach(doc => {
+          this.add({
+            id: doc.id,
+            filename: doc.filename,
+            content: doc.content || '',
+            categories: (doc.categories || []).join(' '),
+            project: doc.project || '',
+            team: doc.team || '',
+            keywords: (doc.keywords || []).join(' '),
+            path: doc.path
+          });
         });
       });
-    });
 
-    console.log(`Index built with ${documents.length} documents`);
+      console.log(`Index built with ${documents.length} documents`);
+    }
   }
 
   search(query, filters = {}) {
@@ -165,56 +311,91 @@ class DocumentIndexer {
 
     let results = this.index.search(query);
     
-    // Get full document details
-    let documents = results.map(result => {
-      const doc = this.db.getDocumentById(result.ref);
-      return {
-        ...doc,
-        score: result.score,
-        matchData: result.matchData
-      };
+    // Get full document details (handle async)
+    const getDocuments = async () => {
+      const documents = [];
+      for (const result of results) {
+        const doc = await this.db.getDocumentById(result.ref);
+        if (doc) {
+          documents.push({
+            ...doc,
+            score: result.score,
+            matchData: result.matchData
+          });
+        }
+      }
+      return documents;
+    };
+
+    return getDocuments().then(documents => {
+      // Apply filters
+      if (filters.extension) {
+        documents = documents.filter(doc => 
+          doc.extension === filters.extension
+        );
+      }
+
+      if (filters.category) {
+        documents = documents.filter(doc => 
+          (doc.categories || []).includes(filters.category)
+        );
+      }
+
+      if (filters.project) {
+        documents = documents.filter(doc => 
+          doc.project === filters.project
+        );
+      }
+
+      if (filters.team) {
+        documents = documents.filter(doc => 
+          doc.team === filters.team
+        );
+      }
+
+      if (filters.dateFrom) {
+        const dateFrom = new Date(filters.dateFrom);
+        documents = documents.filter(doc => 
+          new Date(doc.modified) >= dateFrom
+        );
+      }
+
+      if (filters.dateTo) {
+        const dateTo = new Date(filters.dateTo);
+        documents = documents.filter(doc => 
+          new Date(doc.modified) <= dateTo
+        );
+      }
+
+      return documents;
     });
+  }
 
-    // Apply filters
-    if (filters.extension) {
-      documents = documents.filter(doc => 
-        doc.extension === filters.extension
-      );
+  async semanticSearch(query, filters = {}, limit = 10) {
+    // Perform lexical search first
+    const lexicalResults = await this.search(query, filters);
+    
+    // Enhance with semantic search
+    const hybridResults = await vectorSearch.hybridSearch(
+      query,
+      lexicalResults,
+      limit
+    );
+    
+    // Re-fetch full document details for any new semantic results
+    const finalResults = [];
+    for (const result of hybridResults) {
+      if (!result.fullPath) {
+        const doc = await this.db.getDocumentById(result.id);
+        if (doc) {
+          finalResults.push({ ...doc, ...result });
+        }
+      } else {
+        finalResults.push(result);
+      }
     }
-
-    if (filters.category) {
-      documents = documents.filter(doc => 
-        doc.categories.includes(filters.category)
-      );
-    }
-
-    if (filters.project) {
-      documents = documents.filter(doc => 
-        doc.project === filters.project
-      );
-    }
-
-    if (filters.team) {
-      documents = documents.filter(doc => 
-        doc.team === filters.team
-      );
-    }
-
-    if (filters.dateFrom) {
-      const dateFrom = new Date(filters.dateFrom);
-      documents = documents.filter(doc => 
-        new Date(doc.modified) >= dateFrom
-      );
-    }
-
-    if (filters.dateTo) {
-      const dateTo = new Date(filters.dateTo);
-      documents = documents.filter(doc => 
-        new Date(doc.modified) <= dateTo
-      );
-    }
-
-    return documents;
+    
+    return finalResults;
   }
 
   async reindexDocument(filePath) {
@@ -226,6 +407,10 @@ class DocumentIndexer {
   }
 
   async removeDocument(filePath) {
+    const doc = this.db.getDocumentByPath(path.relative(this.documentsPath, filePath));
+    if (doc) {
+      await vectorSearch.deleteDocument(doc.id);
+    }
     this.db.deleteDocument(filePath);
     this.buildIndex();
   }
@@ -258,14 +443,12 @@ class DocumentIndexer {
     console.log('File watcher initialized');
   }
 
-  getCategories() {
-    return this.db.getCategories();
+  async getCategories() {
+    return await this.db.getCategories();
   }
 
-
-
-  getStats() {
-    return this.db.getStats();
+  async getStats() {
+    return await this.db.getStats();
   }
 }
 
