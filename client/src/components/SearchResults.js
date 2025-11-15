@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, Download, ExternalLink, Calendar, Tag, Users, Folder, Star, TrendingUp, Eye } from 'lucide-react';
+import { FileText, Download, ExternalLink, Calendar, Tag, Users, Folder, Star, Eye } from 'lucide-react';
 import DocumentPreview from './DocumentPreview';
 import './SearchResults.css';
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Book, Search, FileText, TrendingUp, Clock, Tag, Folder, FileType, BarChart3, PieChart, Activity, HardDrive } from 'lucide-react';
+import { Book, Search, FileText, TrendingUp, Clock, Tag, FileType, BarChart3, PieChart, Activity, HardDrive } from 'lucide-react';
 import { CategoryChart, FileTypeChart, ActivityChart, StorageChart } from '../components/Charts';
 import api from '../services/api';
 import './Home.css';
