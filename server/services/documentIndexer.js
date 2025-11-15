@@ -3,7 +3,7 @@ const path = require('path');
 const lunr = require('lunr');
 const chokidar = require('chokidar');
 const DocumentParser = require('./documentParser');
-const DocumentCategorizer = require('./documentCategorizer');
+const { categorizeDocument } = require('./documentCategorizer');
 const DatabaseService = require('./database');
 
 class DocumentIndexer {
@@ -11,7 +11,6 @@ class DocumentIndexer {
     this.documentsPath = documentsPath;
     this.indexPath = indexPath;
     this.parser = new DocumentParser();
-    this.categorizer = new DocumentCategorizer();
     this.index = null;
     
     // Initialize database
@@ -75,7 +74,7 @@ class DocumentIndexer {
       const extension = path.extname(filename).toLowerCase();
       
       // Categorize document
-      const categories = this.categorizer.categorize(content, filename, relativePath);
+      const categoryResult = categorizeDocument(content, filename);
       
       // Create document object
       const doc = {
@@ -87,9 +86,9 @@ class DocumentIndexer {
         size: stats.size,
         created: stats.birthtime,
         modified: stats.mtime,
-        categories: categories.topics,
-        project: categories.project,
-        team: categories.team,
+        categories: [categoryResult.category],
+        project: categoryResult.projects.length > 0 ? categoryResult.projects[0] : null,
+        team: null,
         keywords: this.extractKeywords(content),
         preview: this.generatePreview(content)
       };

@@ -59,6 +59,11 @@ async function initialize() {
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
+
+    // Keep process alive
+    setInterval(() => {
+      console.log('Server heartbeat:', new Date().toISOString());
+    }, 10000);
   } catch (error) {
     console.error('Initialization error:', error);
     process.exit(1);

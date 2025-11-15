@@ -10,12 +10,13 @@
   background: white;
   border-radius: 12px;
   padding: 0.5rem 1rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  transition: box-shadow 0.3s;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  transition: all 0.3s ease;
 }
 
 .search-input-wrapper:focus-within {
-  box-shadow: 0 6px 30px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 12px 40px rgba(102, 126, 234, 0.25);
+  transform: translateY(-2px);
 }
 
 .search-icon {
@@ -30,6 +31,7 @@
   font-size: 1.1rem;
   padding: 0.75rem;
   color: #2c3e50;
+  font-weight: 500;
 }
 
 .search-input::placeholder {
@@ -40,18 +42,20 @@
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
+  padding: 0.875rem 1.75rem;
+  border-radius: 10px;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
 }
 
 .search-button:hover {
-  transform: scale(1.05);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
 }
 
 .search-button:active {
-  transform: scale(0.98);
+  transform: translateY(0);
 }

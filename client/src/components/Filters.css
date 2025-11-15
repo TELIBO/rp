@@ -5,7 +5,9 @@
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   height: fit-content;
   position: sticky;
-  top: 2rem;
+  top: 120px;
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
 }
 
 .filters-header {
@@ -33,18 +35,22 @@
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  background: transparent;
+  background: #fee;
   border: none;
   color: #e74c3c;
   cursor: pointer;
   font-size: 0.85rem;
-  padding: 0.4rem 0.6rem;
+  font-weight: 600;
+  padding: 0.5rem 0.8rem;
   border-radius: 6px;
-  transition: background 0.2s;
+  transition: all 0.2s;
 }
 
 .clear-filters:hover {
-  background: #e74c3c15;
+  background: #e74c3c;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
 }
 
 .filter-group {
@@ -62,25 +68,26 @@
 .filter-group select,
 .filter-group input {
   width: 100%;
-  padding: 0.65rem;
-  border: 1px solid #dfe6e9;
+  padding: 0.75rem;
+  border: 2px solid #e0e0e0;
   border-radius: 8px;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: #2c3e50;
   background: white;
   cursor: pointer;
-  transition: border-color 0.2s;
+  transition: all 0.2s;
 }
 
 .filter-group select:hover,
 .filter-group input:hover {
-  border-color: #b2bec3;
+  border-color: #667eea;
 }
 
 .filter-group select:focus,
 .filter-group input:focus {
   outline: none;
   border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .filter-group input[type="date"] {

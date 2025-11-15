@@ -1,106 +1,185 @@
 const natural = require('natural');
-const path = require('path');
+const tokenizer = new natural.WordTokenizer();
 
-class DocumentCategorizer {
-  constructor() {
-    // Define category keywords
-    this.categoryKeywords = {
-      'Brand Strategy': ['brand', 'branding', 'identity', 'positioning', 'brand guide', 'style guide'],
-      'Social Media': ['social', 'facebook', 'twitter', 'instagram', 'linkedin', 'post', 'hashtag', 'engagement'],
-      'Content Marketing': ['blog', 'article', 'content', 'seo', 'editorial', 'copywriting'],
-      'Email Marketing': ['email', 'newsletter', 'campaign', 'mailchimp', 'subscriber', 'drip'],
-      'Analytics': ['analytics', 'metrics', 'kpi', 'data', 'report', 'dashboard', 'performance'],
-      'Advertising': ['ad', 'advertising', 'ppc', 'campaign', 'google ads', 'facebook ads', 'banner'],
-      'Product Launch': ['launch', 'product', 'release', 'announcement', 'rollout'],
-      'Public Relations': ['pr', 'press', 'media', 'release', 'public relations', 'publicity'],
-      'Design': ['design', 'graphic', 'visual', 'mockup', 'prototype', 'figma', 'photoshop'],
-      'Video Marketing': ['video', 'youtube', 'vimeo', 'animation', 'multimedia'],
-      'Market Research': ['research', 'survey', 'market', 'competitor', 'analysis', 'insights']
-    };
+// Define marketing categories with their associated keywords
+const categories = {
+  'Brand & Identity': [
+    'brand', 'identity', 'logo', 'visual', 'style', 'guide', 'guidelines',
+    'colors', 'typography', 'design', 'asset', 'trademark', 'voice', 'tone',
+    'personality', 'positioning', 'values', 'mission', 'vision'
+  ],
+  'Email Marketing': [
+    'email', 'newsletter', 'campaign', 'subject', 'line', 'recipient',
+    'unsubscribe', 'open', 'rate', 'click', 'through', 'mailchimp',
+    'send', 'blast', 'automation', 'drip', 'sequence', 'personalization'
+  ],
+  'Social Media': [
+    'social', 'media', 'facebook', 'twitter', 'instagram', 'linkedin',
+    'post', 'hashtag', 'engagement', 'followers', 'influencer', 'tiktok',
+    'youtube', 'pinterest', 'stories', 'reels', 'viral', 'share'
+  ],
+  'Content Strategy': [
+    'content', 'blog', 'article', 'seo', 'keyword', 'editorial', 'calendar',
+    'publish', 'writing', 'copywriting', 'storytelling', 'narrative',
+    'thought', 'leadership', 'whitepaper', 'ebook', 'pillar'
+  ],
+  'Advertising': [
+    'ad', 'advertising', 'ppc', 'paid', 'google', 'ads', 'facebook',
+    'display', 'banner', 'retargeting', 'remarketing', 'cpm', 'cpc',
+    'impression', 'conversion', 'landing', 'page', 'creative'
+  ],
+  'Analytics & Reporting': [
+    'analytics', 'metrics', 'kpi', 'performance', 'report', 'dashboard',
+    'tracking', 'measurement', 'roi', 'attribution', 'funnel', 'conversion',
+    'rate', 'benchmark', 'goal', 'data', 'insight', 'statistics'
+  ],
+  'Product Marketing': [
+    'product', 'launch', 'feature', 'release', 'roadmap', 'positioning',
+    'messaging', 'pricing', 'competitive', 'analysis', 'market', 'research',
+    'buyer', 'persona', 'value', 'proposition', 'differentiation'
+  ],
+  'Events & Webinars': [
+    'event', 'webinar', 'conference', 'trade', 'show', 'booth', 'sponsor',
+    'speaker', 'registration', 'attendee', 'virtual', 'hybrid', 'networking',
+    'expo', 'summit', 'workshop', 'presentation', 'demo'
+  ],
+  'Customer Marketing': [
+    'customer', 'retention', 'loyalty', 'advocacy', 'testimonial', 'review',
+    'case', 'study', 'reference', 'upsell', 'cross-sell', 'churn',
+    'satisfaction', 'nps', 'feedback', 'community'
+  ],
+  'Demand Generation': [
+    'demand', 'generation', 'lead', 'nurture', 'qualification', 'scoring',
+    'mql', 'sql', 'pipeline', 'prospecting', 'outreach', 'cadence',
+    'touchpoint', 'engagement', 'conversion', 'funnel'
+  ],
+  'Partner Marketing': [
+    'partner', 'channel', 'reseller', 'affiliate', 'co-marketing',
+    'joint', 'collaboration', 'alliance', 'integration', 'ecosystem',
+    'referral', 'program', 'enablement'
+  ],
+  'Internal': [
+    'intern', 'internship', 'assignment', 'admit', 'admission', 'implementation',
+    'hr', 'human', 'resources', 'admin', 'administrative', 'memo', 'memorandum',
+    'policy', 'procedure', 'onboarding', 'training', 'internal', 'employee',
+    'staff', 'team', 'meeting', 'notes', 'agenda', 'minutes'
+  ],
+  'Sales Enablement': [
+    'sales', 'enablement', 'deck', 'pitch', 'proposal', 'quote', 'playbook',
+    'battlecard', 'objection', 'handling', 'closing', 'negotiation',
+    'qualification', 'discovery', 'demo', 'presentation'
+  ],
+  'Customer Success': [
+    'customer', 'success', 'onboarding', 'adoption', 'health', 'score',
+    'renewal', 'expansion', 'account', 'management', 'support',
+    'implementation', 'training', 'documentation', 'best', 'practices'
+  ],
+  'Public Relations': [
+    'pr', 'public', 'relations', 'press', 'release', 'media', 'coverage',
+    'journalist', 'publication', 'announcement', 'statement', 'crisis',
+    'communication', 'spokesperson', 'interview', 'news'
+  ]
+};
 
-    this.teamKeywords = {
-      'Creative Team': ['design', 'creative', 'art', 'visual', 'graphic'],
-      'Content Team': ['content', 'writing', 'editorial', 'blog', 'article'],
-      'Social Media Team': ['social', 'community', 'engagement', 'post'],
-      'Analytics Team': ['analytics', 'data', 'metrics', 'report', 'insights'],
-      'Product Marketing': ['product', 'launch', 'feature', 'roadmap'],
-      'Growth Team': ['growth', 'acquisition', 'conversion', 'funnel']
-    };
-
-    this.tokenizer = new natural.WordTokenizer();
-  }
-
-  categorize(content, filename, filePath) {
-    const text = (content + ' ' + filename + ' ' + filePath).toLowerCase();
-    const tokens = this.tokenizer.tokenize(text);
-
-    return {
-      topics: this.categorizeByTopic(tokens),
-      team: this.categorizeByTeam(tokens),
-      project: this.extractProject(filePath)
-    };
-  }
-
-  categorizeByTopic(tokens) {
-    const categories = [];
-    const tokenSet = new Set(tokens);
-
-    for (const [category, keywords] of Object.entries(this.categoryKeywords)) {
-      const matchCount = keywords.filter(keyword => {
-        return tokens.some(token => token.includes(keyword) || keyword.includes(token));
-      }).length;
-
-      if (matchCount > 0) {
-        categories.push({
-          name: category,
-          score: matchCount
-        });
-      }
+// Helper function to extract meaningful project identifiers from text
+function extractProjectInfo(text) {
+  const projects = [];
+  
+  // Look for common project patterns
+  const patterns = [
+    /\bQ[1-4][-\s]?\d{4}\b/gi,           // Q4-2024, Q1 2024
+    /\b\d{4}[-\s]?Q[1-4]\b/gi,           // 2024-Q4, 2024 Q1
+    /\b[A-Z]{3,}[-]\d{2,4}\b/gi,         // PROJ-2024, ABC-24 (minimum 3 letters, must have hyphen)
+    /\bcampaign[-\s]\w+/gi,              // campaign-holiday
+    /\b(spring|summer|fall|winter|holiday)[-\s]?\d{4}\b/gi  // holiday-2024
+  ];
+  
+  patterns.forEach(pattern => {
+    const matches = text.match(pattern);
+    if (matches) {
+      projects.push(...matches.map(m => m.trim()));
     }
-
-    // Sort by score and return top 3
-    return categories
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 3)
-      .map(c => c.name);
-  }
-
-  categorizeByTeam(tokens) {
-    let maxScore = 0;
-    let bestTeam = 'General';
-
-    for (const [team, keywords] of Object.entries(this.teamKeywords)) {
-      const matchCount = keywords.filter(keyword => {
-        return tokens.some(token => token.includes(keyword) || keyword.includes(token));
-      }).length;
-
-      if (matchCount > maxScore) {
-        maxScore = matchCount;
-        bestTeam = team;
-      }
-    }
-
-    return bestTeam;
-  }
-
-  extractProject(filePath) {
-    // Try to extract project name from directory structure
-    const parts = filePath.split(path.sep);
-    
-    // Look for common project indicators
-    const projectIndicators = ['project', 'campaign', 'client'];
-    
-    for (let i = 0; i < parts.length - 1; i++) {
-      const part = parts[i].toLowerCase();
-      
-      if (projectIndicators.some(indicator => part.includes(indicator))) {
-        return parts[i + 1] || parts[i];
-      }
-    }
-
-    // If no project indicator found, use first directory level
-    return parts.length > 1 ? parts[0] : 'Uncategorized';
-  }
+  });
+  
+  return [...new Set(projects)]; // Remove duplicates
 }
 
-module.exports = DocumentCategorizer;
+// Categorize document based on content and filename
+function categorizeDocument(content, filename = '') {
+  const text = `${content} ${filename}`.toLowerCase();
+  const tokens = tokenizer.tokenize(text);
+  
+  if (!tokens || tokens.length === 0) {
+    return {
+      category: 'General',
+      confidence: 0,
+      projects: extractProjectInfo(filename)
+    };
+  }
+
+  const scores = {};
+  
+  // Check for minimal content (likely PDF with no extracted text)
+  const hasMinimalContent = tokens.length < 50;
+  
+  // Score each category
+  Object.entries(categories).forEach(([category, keywords]) => {
+    let score = 0;
+    
+    keywords.forEach(keyword => {
+      const keywordTokens = keyword.toLowerCase().split(' ');
+      
+      // Count occurrences in content
+      if (keywordTokens.length === 1) {
+        score += tokens.filter(t => t === keyword).length;
+      } else {
+        // Multi-word keyword matching
+        const keywordText = keywordTokens.join(' ');
+        const matchCount = (text.match(new RegExp(keywordText, 'gi')) || []).length;
+        score += matchCount * 2; // Weight multi-word matches higher
+      }
+      
+      // For minimal content (PDFs), heavily weight filename matches
+      if (hasMinimalContent) {
+        const filenameText = filename.toLowerCase();
+        if (keywordTokens.length === 1) {
+          if (filenameText.includes(keyword)) {
+            score += 3; // Triple weight for filename matches on minimal content
+          }
+        } else {
+          const keywordText = keywordTokens.join(' ');
+          if (filenameText.includes(keywordText)) {
+            score += 6; // Even higher weight for multi-word filename matches
+          }
+        }
+      }
+    });
+    
+    scores[category] = score;
+  });
+
+  // Find the category with the highest score
+  const sortedCategories = Object.entries(scores)
+    .sort(([, a], [, b]) => b - a);
+  
+  const topCategory = sortedCategories[0];
+  const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
+  
+  // Calculate confidence (0-1)
+  const confidence = totalScore > 0 ? topCategory[1] / totalScore : 0;
+  
+  // Extract project information
+  const projects = extractProjectInfo(`${content} ${filename}`);
+
+  return {
+    category: topCategory[1] > 0 ? topCategory[0] : 'General',
+    confidence: Math.round(confidence * 100) / 100,
+    projects: projects,
+    scores: sortedCategories.slice(0, 3).map(([cat, score]) => ({ category: cat, score }))
+  };
+}
+
+module.exports = {
+  categorizeDocument,
+  categories: Object.keys(categories)
+};
