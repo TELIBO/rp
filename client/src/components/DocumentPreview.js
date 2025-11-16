@@ -51,7 +51,7 @@ function DocumentPreview({ document, onClose }) {
           </div>
           <div className="preview-actions">
             <a
-              href={`http://localhost:5000${document.url}`}
+              href={document.url}
               target="_blank"
               rel="noopener noreferrer"
               className="preview-action-btn"
@@ -60,7 +60,7 @@ function DocumentPreview({ document, onClose }) {
               <ExternalLink size={20} />
             </a>
             <a
-              href={`http://localhost:5000${document.url}`}
+              href={document.url}
               download
               className="preview-action-btn"
               title="Download"
@@ -118,7 +118,7 @@ function DocumentPreview({ document, onClose }) {
           ) : document.extension === '.pdf' ? (
             <div className="preview-iframe-container">
               <iframe
-                src={`http://localhost:5000${document.url}`}
+                src={document.url}
                 title={document.filename}
                 className="preview-iframe"
               />
