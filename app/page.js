@@ -9,7 +9,8 @@ import '../components/index.css'
 
 export default function Home() {
   const router = useRouter()
-  const [stats, setStats] = useState(null)
+  const [stats, setStats] = useState({ totalDocuments: 0, fileTypes: {}, totalSize: 0 })
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     loadStats()
@@ -19,9 +20,13 @@ export default function Home() {
     try {
       const res = await fetch('/api/stats')
       const data = await res.json()
-      setStats(data.stats)
+      console.log('Stats loaded:', data)
+      setStats(data.stats || { totalDocuments: 0, fileTypes: {}, totalSize: 0 })
     } catch (error) {
       console.error('Failed to load stats:', error)
+      // Keep default stats
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -63,39 +68,37 @@ export default function Home() {
           </div>
         </section>
 
-        {stats && (
-          <section className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-icon">
-                <FileText size={24} />
-              </div>
-              <div className="stat-content">
-                <h3>{formatNumber(stats.totalDocuments)}</h3>
-                <p>Total Documents</p>
-              </div>
+        <section className="stats-grid">
+          <div className="stat-card">
+            <div className="stat-icon">
+              <FileText size={24} />
             </div>
+            <div className="stat-content">
+              <h3>{loading ? '...' : formatNumber(stats.totalDocuments)}</h3>
+              <p>Total Documents</p>
+            </div>
+          </div>
 
-            <div className="stat-card">
-              <div className="stat-icon">
-                <FileType size={24} />
-              </div>
-              <div className="stat-content">
-                <h3>{Object.keys(stats.fileTypes || {}).length}</h3>
-                <p>File Types</p>
-              </div>
+          <div className="stat-card">
+            <div className="stat-icon">
+              <FileType size={24} />
             </div>
+            <div className="stat-content">
+              <h3>{loading ? '...' : Object.keys(stats.fileTypes || {}).length}</h3>
+              <p>File Types</p>
+            </div>
+          </div>
 
-            <div className="stat-card">
-              <div className="stat-icon">
-                <HardDrive size={24} />
-              </div>
-              <div className="stat-content">
-                <h3>{formatFileSize(stats.totalSize)}</h3>
-                <p>Total Size</p>
-              </div>
+          <div className="stat-card">
+            <div className="stat-icon">
+              <HardDrive size={24} />
             </div>
-          </section>
-        )}
+            <div className="stat-content">
+              <h3>{loading ? '...' : formatFileSize(stats.totalSize)}</h3>
+              <p>Total Size</p>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   )
