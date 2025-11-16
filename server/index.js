@@ -18,8 +18,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files (documents)
-app.use('/files', express.static(documentsPath));
 
 // Initialize document indexer
 const documentsPath = process.env.DOCUMENTS_PATH 
@@ -36,6 +34,9 @@ const documentIndexer = new DocumentIndexer(documentsPath, indexPath);
 
 // Make indexer available to routes
 app.set('documentIndexer', documentIndexer);
+
+// Serve static files (documents) -- after documentsPath is defined
+app.use('/files', express.static(documentsPath));
 
 // Routes
 app.use('/api/search', searchRoutes);
