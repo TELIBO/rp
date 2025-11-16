@@ -16,7 +16,7 @@ router.get('/', async (req, res) => {
       categories: doc.categories || [],
       project: doc.project,
       team: doc.team,
-      url: `/files/${doc.path}`
+     url: `/files/${encodeURIComponent(doc.path)}`
     }));
 
     res.json({
@@ -41,7 +41,7 @@ router.get('/:id', async (req, res) => {
     // Categories and keywords are already parsed by database service
     const parsedDoc = {
       ...doc,
-      url: `/files/${doc.path}`
+      url: `/files/${encodeURIComponent(doc.path)}`
     };
 
     res.json(parsedDoc);
