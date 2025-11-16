@@ -1,7 +1,12 @@
 const fs = require('fs').promises;
 const path = require('path');
 const lunr = require('lunr');
-const chokidar = require('chokidar');
+let chokidar;
+try {
+  chokidar = require('chokidar');
+} catch (err) {
+  console.log('Chokidar not available - file watching disabled');
+}
 const DocumentParser = require('./documentParser');
 const { categorizeDocument } = require('./documentCategorizer');
 const PostgresService = require('./postgresDatabase');
@@ -416,6 +421,11 @@ class DocumentIndexer {
   }
 
   watchFiles() {
+    if (!chokidar) {
+      console.log('File watching disabled (chokidar not available)');
+      return;
+    }
+    
     const watcher = chokidar.watch(this.documentsPath, {
       ignored: /(^|[\/\\])\../,
       persistent: true,

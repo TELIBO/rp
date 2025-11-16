@@ -22,7 +22,8 @@ const nextConfig = {
       'mammoth',
       'natural',
       '@xenova/transformers',
-      'onnxruntime-node'
+      'onnxruntime-node',
+      'chokidar'
     ]
   }
 }
