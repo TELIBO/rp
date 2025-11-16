@@ -1,8 +1,0 @@
-{
-  "buildCommand": "npm install && npm run build",
-  "env": {
-    "NODE_ENV": "production",
-    "DOCUMENTS_PATH": "./documents-demo",
-    "INDEX_PATH": "./index"
-  }
-}
