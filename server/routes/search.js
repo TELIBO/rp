@@ -43,7 +43,7 @@ router.get('/', async (req, res) => {
         content: doc.content, // Include full content for preview
         score: doc.score,
         fusionScore: doc.fusionScore,
-        url: `/files/${doc.path}`
+        url: `/files/${encodeURIComponent(doc.path)}`
       }))
     });
   } catch (error) {
