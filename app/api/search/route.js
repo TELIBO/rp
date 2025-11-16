@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
-
-const DocumentIndexer = require('../../../../server/services/documentIndexer')
 const path = require('path')
+const DocumentIndexer = require('../../../server/services/documentIndexer')
 
 const documentsPath = path.join(process.cwd(), 'documents-demo')
 const indexPath = path.join(process.cwd(), 'index')
