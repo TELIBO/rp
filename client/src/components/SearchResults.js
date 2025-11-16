@@ -130,7 +130,7 @@ function SearchResults({ results, loading, query }) {
                   <Eye size={18} />
                 </button>
                 <a 
-                  href={`http://localhost:5000${doc.url}`}
+                  href={doc.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="action-btn view-btn"
@@ -140,7 +140,7 @@ function SearchResults({ results, loading, query }) {
                   <ExternalLink size={18} />
                 </a>
                 <a 
-                  href={`http://localhost:5000${doc.url}`}
+                  href={doc.url}
                   download
                   className="action-btn download-btn"
                   title="Download file"
