@@ -48,6 +48,15 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Search API is running' });
 });
 
+// Serve React frontend in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../client/build')));
+  
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
+  });
+}
+
 // Initialize directories and start indexing
 async function initialize() {
   try {

@@ -1,0 +1,19 @@
+services:
+  # Backend + Frontend combined service
+  - type: web
+    name: marketing-search-tool
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm install && cd client && npm install && npm run build && cd ..
+    startCommand: node server/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: DOCUMENTS_PATH
+        value: ./documents
+      - key: INDEX_PATH
+        value: ./index
+    autoDeploy: true
