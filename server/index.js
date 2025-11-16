@@ -36,7 +36,34 @@ const documentIndexer = new DocumentIndexer(documentsPath, indexPath);
 app.set('documentIndexer', documentIndexer);
 
 // Serve static files (documents) -- after documentsPath is defined
-app.use('/files', express.static(documentsPath));
+app.use('/files', (req, res, next) => {
+  const filePath = path.join(documentsPath, req.path);
+  const ext = path.extname(filePath).toLowerCase();
+  
+  // Set proper content type
+  const contentTypes = {
+    '.pdf': 'application/pdf',
+    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.doc': 'application/msword',
+    '.txt': 'text/plain',
+    '.md': 'text/markdown',
+    '.html': 'text/html',
+    '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+  };
+  
+  if (contentTypes[ext]) {
+    res.setHeader('Content-Type', contentTypes[ext]);
+  }
+  
+  // Force download with proper filename
+  const filename = path.basename(filePath);
+  res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  
+  console.log('Serving file:', filename, 'Type:', contentTypes[ext] || 'unknown');
+  next();
+}, express.static(documentsPath));
+
 
 // Routes
 app.use('/api/search', searchRoutes);
