@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "marketing-search-tool",
   "version": "1.0.0",
   "description": "Smart internal search tool for marketing documents and assets",
@@ -9,10 +9,15 @@
     "client": "cd client && npm start",
     "dev": "concurrently \"npm run server:dev\" \"npm run client\"",
     "install-all": "npm install && cd client && npm install",
-    "build": "cd client && npm run build",
+    "build": "npm install && cd client && npm install && cd client && npm run build",
     "start": "node server/index.js"
   },
-  "keywords": ["search", "documents", "indexing", "marketing"],
+  "keywords": [
+    "search",
+    "documents",
+    "indexing",
+    "marketing"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
@@ -37,3 +42,4 @@
     "nodemon": "^3.0.1"
   }
 }
+
